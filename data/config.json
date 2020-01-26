@@ -1,0 +1,9 @@
+{
+    "token": "",
+    "prefix": "!",
+    "bot_name": "HowdyBot",
+    "version": "1.0.0",
+    "level_multiplier": 500,
+    "commands_channel_id": "ENTER YOUR COMMANDS CHANNEL ID (E.G #commands)",
+    "level_channel_id": "ENTER YOUR LEVEL UP CHANNEL ID (E.G #level-up)"
+}
