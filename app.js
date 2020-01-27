@@ -11,6 +11,7 @@ const client = new Discord.Client();
 //JSON files
 let xp = require("./data/xp.json");
 let currency = require('./data/currency.json');
+let questions = require('./data/trivia.json');
 
 //Command Handler
 client.commands = new Discord.Collection();
@@ -42,17 +43,6 @@ fs.readdir('./events/', (err, files) => {
     });
 });
 
-client.on('ready', () => {
-    console.log(config.bot_name + " is now online! Version: " + config.version);
-    client.user.setPresence({
-        status: "online",
-        game: {
-            name: "Being developed",
-            type: "STREAMING"
-        }
-    });
-});
-
 /**
 * XP System
 */
@@ -71,7 +61,7 @@ client.on('message', message => {
         };
     }
 
-    let nextLevel = xp[message.author.id].level * config.level_multiplier;
+    let nextLevel = xp[message.author.id].level * 300;
     let currentXp = xp[message.author.id].xp;
     let currentLevel = xp[message.author.id].level;
     let currentMilestone = xp[message.author.id].milestone;
@@ -127,6 +117,7 @@ client.on('message', message => {
             hcoin: 0,
             message_loop: 0,
             total_messages: 0,
+            trivia_guessed: 0,
         };
     }
 
@@ -171,10 +162,122 @@ function getDateTime() {
     return year + ":" + month + ":" + day + ":" + hour + ":" + min + ":" + sec;
 }
 
+var startedTrivia = false;
+var answered = false;
+var userAnswer = "";
+var answer = "";
+var answer2 = "";
+var currentQuestion = "";
+var category = "";
+var lastQuizID;
+
+function startTrivia(message) {
+    //Number of questions in total (check trivia.json for a count)
+    number = 50
+    var random = Math.floor(Math.random() * (number));
+    if (random > number) {
+        random = random - 1;
+    } else if (random == 0) {
+        random = random + 1;
+    } else if (random == lastQuizID) {
+        random = Math.floor(Math.random() * (number));
+    }
+    console.log(`Selected Quiz ID: ${random}`);
+    currentQuestion = questions[random].question;
+    console.log(`Trivia question set to ${currentQuestion}`);
+    category = questions[random].category;
+    console.log(`Trivia answer set to ${category}`);
+    answer = questions[random].answer;
+    answer2 = questions[random].answer2;
+    console.log(`Trivia answer set to ${answer}`);
+    startedTrivia = true;
+    answered = false;
+    lastQuizID = random;
+}
+
 client.on('message', message => {
-    console.log("[" + getDateTime() + "] " + message.member.displayName + ": " + message.content);
+    if (message.author.bot) return;
+    if (message.channel.id == config.trivia_channel_id) {
+        if (startedTrivia == true) {
+            let guessCount = currency[message.author.id].trivia_guessed;
+            userAnswer = message.content.toLowerCase();
+            if (userAnswer == answer || userAnswer == answer2) {
+                const triviaReward = 100 * xp[message.author.id].level / 2;
+                let coins = currency[message.author.id].hcoin;
+                currency[message.author.id].trivia_guessed = guessCount + 1;
+                message.channel.send(`<@${message.author.id}> has guessed correctly. \nThe answer was: **${answer}**. \nReward for guessing correctly: :shit: ${triviaReward}.\n${message.author.username}'s trivia record is now: ${currency[message.author.id].trivia_guessed}.`);
+                currency[message.author.id].hcoin = coins + triviaReward;
+                setTriviaTimer(false);
+                startedTrivia = false;
+                answered == true;
+            }
+        } else {
+            message.channel.send("There is currently no Trivia running. You missed it, a new trivia runs every hour so keep an eye out!");
+        }
+        message.delete(100);
+    }
+});
+
+client.on('ready', () => {
+    console.log(config.bot_name + " is now online! Version: " + config.version);
+
+    /**
+     * Clear trivia chat to keep the text channel clean
+     */
+    setInterval(() => {
+        if (startedTrivia == false) {
+            triviaChannel = client.channels.get(config.trivia_channel_id);
+            triviaChannel.bulkDelete(100, true);
+        }
+    }, 1250 * 60 * 60);
+
+    /**
+     * Trivia interval to begin new trivia's
+     */
+    setInterval(() => {
+        startTrivia();
+        triviaChannel = client.channels.get(config.trivia_channel_id);
+        console.log(`Channel: ${triviaChannel}`);
+
+        let triviaBegun = new Discord.RichEmbed()
+            .setTitle("TRIVIA!")
+            .setColor("RANDOM")
+            .addField("Category", category)
+            .addField("Question", currentQuestion)
+            .addField("Quickly", `You have ${config.trivia_seconds} seconds to answer correctly!`)
+
+        triviaChannel.send(triviaBegun);
+        //triviaChannel.send("@everyone");
+
+        random = 0;
+        setTriviaTimer(true);
+        //}, 10000); // for testing
+    }, 400 * 60 * 60); //miliseconds.
+
+    client.user.setPresence({
+        status: "online",
+        game: {
+            name: "Being developed",
+            type: "STREAMING"
+        }
+    });
+});
+
+function setTriviaTimer(bool) {
+    let timer = config.trivia_seconds * 1000;
+    if (bool == false) {
+        clearInterval(checkTriviaTime);
+    } else if (bool == true) {
+        var checkTriviaTime = setInterval(() => {
+            startedTrivia = false;
+            clearInterval(checkTriviaTime);
+        }, timer);
+    }
+}
+
+client.on('message', message => {
+    //console.log("[" + getDateTime() + "] " + message.member.displayName + ": " + message.content);
 });
 
 //Bot login
 client.login(config.token);
-
