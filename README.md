@@ -8,6 +8,7 @@
 - Currency system which also has features with the XP system & comes with betting.
 - Basic commands (level, hcoin, clear, whois, bet, give, meme, & reload).
 - A decent base to start out with.
+- Trivia system that calls every 24 minutes, guessing correctly rewards you with hcoin.
 
 ###### Requirements
 **You must have Node installed on your computer to begin developing with this bot, as with any Discord.js project. Install it [here](https://nodejs.org/en/)**
